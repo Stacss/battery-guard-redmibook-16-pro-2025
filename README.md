@@ -43,8 +43,6 @@ cat /sys/class/power_supply/BAT0/status
 Этот проект лицензирован по лицензии MIT. Дополняйте и улучшайте свободно!
 
 
-Вот переведённая английская версия твоего README в стиле GitHub:
-
 # 🔋 Xiaomi RedmiBook Pro 16 (2025) — Battery Charge Limit on Ubuntu 25+
 
 **Goal** — Limit battery charging to 40–80% to extend battery lifespan.

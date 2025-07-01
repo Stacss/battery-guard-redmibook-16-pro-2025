@@ -38,7 +38,6 @@ cat /sys/class/power_supply/BAT0/status
 
 - [ArchWiki — Xiaomi RedmiBook Pro 16 (2025)](https://wiki.archlinux.org/title/Xiaomi_RedmiBook_Pro_16_2025)
 - [nix‑community/acpi_call](https://github.com/nix-community/acpi_call)
-- 
 ## Лицензия
 
 Этот проект лицензирован по лицензии MIT. Дополняйте и улучшайте свободно!

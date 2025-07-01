@@ -14,6 +14,7 @@
 ```bash
 git clone https://github.com/Stacss/battery-guard-redmibook-16-pro-2025
 cd battery-guard-redmibook-16-pro-2025
+chmod +x install.sh
 sudo ./install.sh 70   # замените 70 на нужный лимит (40 / 50 / 60 / 70 / 80)
 ```
 Далее перезагрузите ноутбук.

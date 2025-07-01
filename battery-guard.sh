@@ -1,51 +1,58 @@
 #!/bin/bash
 
-# Пороговые значения
-LOW_LIMIT=40
-HIGH_LIMIT=80
+# Установка лимита зарядки для Xiaomi RedmiBook Pro 16 (2025) под Ubuntu 25+
+# Работает через ACPI-вызов \_SB.PC00.WMID.WMAA
+# Требует установленного и загруженного модуля acpi_call
 
-# Файл лога
-LOGFILE="$HOME/.battery-guard.log"
+ACPI_NODE="\\_SB.PC00.WMID.WMAA"
 
-# Путь к звуковому уведомлению (можно заменить)
-ALERT_SOUND="/usr/share/sounds/freedesktop/stereo/complete.oga"
+acpi_call() {
+    local command="$1"
+    local hex_value="$2"
 
-# Последнее состояние (для антиспама)
-LAST_STATE="none"
+    local acpi_string="$ACPI_NODE 0x0 0x1 { \
+0x00 $command 0x00 0x10 0x02 0x00 $hex_value 0x00 \
+0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 \
+0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 \
+0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 }"
 
-# Лог-функция
-log() {
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+    echo "$acpi_string" | sudo tee /proc/acpi/call > /dev/null
 }
 
-# Проверка, не запущен ли уже другой экземпляр
-PIDFILE="/tmp/battery-guard.pid"
-if [[ -e "$PIDFILE" ]]; then
-  if kill -0 $(cat "$PIDFILE") 2>/dev/null; then
-    echo "Скрипт уже запущен с PID $(cat "$PIDFILE")"
+set_charge_limit() {
+    local limit="$1"
+    local hex
+
+    case "$limit" in
+        40) hex="0x08" ;;
+        50) hex="0x07" ;;
+        60) hex="0x06" ;;
+        70) hex="0x05" ;;
+        80) hex="0x01" ;;
+        *) echo "❌ Ошибка: допустимые лимиты — 40, 50, 60, 70, 80"; exit 1 ;;
+    esac
+
+    echo "⚙️ Установка лимита зарядки на $limit%"
+    acpi_call "0xfb" "$hex"
+    sleep 1
+    acpi_call "0xfa" "0x00"
+    sleep 1
+    acpi_call "0xfa" "0x00"
+}
+
+disable_charge_limit() {
+    echo "🧯 Отключение лимита зарядки"
+    acpi_call "0xfb" "0x00"
+    sleep 1
+    acpi_call "0xfb" "0x00"
+}
+
+# Точка входа
+if [[ "$1" == "disable" ]]; then
+    disable_charge_limit
+elif [[ "$1" =~ ^(40|50|60|70|80)$ ]]; then
+    set_charge_limit "$1"
+else
+    echo "Использование: $0 <40|50|60|70|80|disable>"
     exit 1
-  fi
 fi
-echo $$ > "$PIDFILE"
-
-# Основной цикл
-while true; do
-  CHARGE=$(cat /sys/class/power_supply/BAT0/capacity)
-  STATUS=$(cat /sys/class/power_supply/BAT0/status)
-
-  if [[ "$STATUS" == "Charging" && "$CHARGE" -ge "$HIGH_LIMIT" && "$LAST_STATE" != "full" ]]; then
-    notify-send "🔋 Батарея $CHARGE%" "Отключи зарядку — во избежание износа" -i battery
-    paplay "$ALERT_SOUND" &
-    log "Предупреждение: уровень $CHARGE%, отключи зарядку"
-    LAST_STATE="full"
-  elif [[ "$STATUS" == "Discharging" && "$CHARGE" -le "$LOW_LIMIT" && "$LAST_STATE" != "low" ]]; then
-    notify-send "🔋 Батарея $CHARGE%" "Пора подключить зарядку" -i battery-caution
-    paplay "$ALERT_SOUND" &
-    log "Предупреждение: уровень $CHARGE%, подключи зарядку"
-    LAST_STATE="low"
-  elif [[ "$CHARGE" -gt "$LOW_LIMIT" && "$CHARGE" -lt "$HIGH_LIMIT" ]]; then
-    LAST_STATE="normal"
-  fi
-
-  sleep 60
-done
